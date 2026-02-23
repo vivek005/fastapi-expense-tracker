@@ -86,3 +86,21 @@ def get_total_spent():
     
     conn.close()
     return {"total_spent": total}
+
+@app.delete("/expenses/{expense_id}")
+def delete_expense(expense_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # 1. Check if it exists
+    cursor.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return {"error": f"Expense with ID {expense_id} not found."}
+    
+    # 2. Delete it
+    cursor.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+    conn.commit()
+    conn.close()
+    
+    return {"message": f"Expense {expense_id} deleted successfully!"}
