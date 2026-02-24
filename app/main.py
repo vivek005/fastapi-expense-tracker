@@ -1,106 +1,37 @@
 from fastapi import FastAPI
-from .database import init_db, get_connection
-from pydantic import BaseModel, Field
-from datetime import date
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from . import schemas, crud
+from .database import init_db
 
-# This is your Pydantic Model
-class ExpenseCreate(BaseModel):
-    amount: float = Field(gt=0, description="The amount must be greater than zero")
-    category: str = Field(min_length=3, max_length=20)
-    notes: str = "No notes provided" # Default value
-    date: date # This automatically validates YYYY-MM-DD strings
 
 app = FastAPI()
 
-# This runs the database initialization when you start the server
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 @app.on_event("startup")
 def startup_event():
     init_db()
 
 @app.get("/")
-def home():
-    return {"status": "Success", "message": "FastAPI is running with SQLite!"}
+def read_index():
+    return FileResponse('static/index.html')
 
-@app.post("/expenses/")
-def create_expense(expense: ExpenseCreate):
-    # 1. Open the connection
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # 2. Write the SQL command
-    # Notice the '?'—these are placeholders to prevent SQL Injection (Security!)
-    query = """
-        INSERT INTO expenses (amount, category, notes, date) 
-        VALUES (?, ?, ?, ?)
-    """
-    
-    # 3. Execute with the validated data from Pydantic
-    cursor.execute(query, (
-        expense.amount, 
-        expense.category, 
-        expense.notes, 
-        str(expense.date) # We convert the date object to a string for SQLite
-    ))
-    
-    # 4. Save and Close
-    conn.commit()
-    conn.close()
-    
-    return {"message": "Expense saved successfully!", "data": expense}
-    
-@app.get("/expenses/")
+@app.post("/expenses/", response_model=schemas.ExpenseResponse)
+def create_expense(expense: schemas.ExpenseCreate):
+    return crud.create_expense_in_db(expense)
+
+@app.get("/expenses/", response_model=list[schemas.ExpenseResponse])
 def list_expenses():
-    # 1. Get the connection
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # 2. Run the Select query
-    cursor.execute("SELECT * FROM expenses")
-    
-    # 3. Fetch all records
-    rows = cursor.fetchall()
-    
-    # 4. Convert rows to a list of dictionaries
-    # Remember 'conn.row_factory = sqlite3.Row'? 
-    # That makes this conversion very easy.
-    expenses = []
-    for row in rows:
-        expenses.append(dict(row))
-    
-    conn.close()
-    return expenses
+    return crud.get_all_expenses()
 
 @app.get("/expenses/total")
 def get_total_spent():
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # SQL math: SUM(amount) adds up the whole column
-    cursor.execute("SELECT SUM(amount) FROM expenses")
-    
-    # fetchone() gives us the single result of the math
-    result = cursor.fetchone()
-    
-    # The result comes back as a Row, so we grab the first value
-    total = result[0] if result[0] else 0
-    
-    conn.close()
-    return {"total_spent": total}
+    total = crud.get_total_spent_from_db()
+    return{"total_spent": total}
+
 
 @app.delete("/expenses/{expense_id}")
 def delete_expense(expense_id: int):
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # 1. Check if it exists
-    cursor.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,))
-    if not cursor.fetchone():
-        conn.close()
-        return {"error": f"Expense with ID {expense_id} not found."}
-    
-    # 2. Delete it
-    cursor.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
-    conn.commit()
-    conn.close()
-    
-    return {"message": f"Expense {expense_id} deleted successfully!"}
+    crud.delete_expense_by_id(expense_id)
+    return {"message": "Deleted successfully"}

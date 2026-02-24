@@ -1,0 +1,46 @@
+FastAPI & Git Cheat Sheet
+Python & Virtual Environment
+
+Create venv: python -m venv venv
+
+Activate venv: source venv/Scripts/activate
+
+Install Tools: pip install fastapi "uvicorn[standard]"
+
+Save Tools: pip freeze > requirements.txt
+
+Running the Server
+
+Start Server: uvicorn app.main:app --reload
+
+API Docs: http://127.0.0.1:8000/docs
+
+Stop Server: CTRL + C
+
+Git & GitHub Cycle
+
+git status
+
+git add .
+
+git commit -m "Your message"
+
+git push
+
+SQL & Logic Reference
+
+Total Calculation: SELECT SUM(amount) FROM expenses
+
+Logic: Uses the database engine to sum the entire column instantly.
+
+Delete Record: DELETE FROM expenses WHERE id = ?
+
+Logic: Uses the ID as a unique identifier to remove a specific row.
+
+Security: Always use ? placeholders in queries to prevent SQL Injection.
+
+Persistence: Use conn.commit() after INSERT or DELETE to save changes to the .db file.
+
+Database Reminders
+
+.gitignore: Ensure venv/ and *.db are listed so they are not uploaded to GitHub.
