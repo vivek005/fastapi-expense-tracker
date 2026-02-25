@@ -1,12 +1,13 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+from datetime import date
 
 class ExpenseBase(BaseModel):
     # Field helps add metadata and extra validation
     notes: str = Field(..., min_length=2, max_length=50, description="What did you buy?")
     amount: float = Field(..., gt=0, description="Amount must be greater than zero")
     category: str = Field(default="Misc", min_length=2)
-    date: str
+    date: date
 
     # Custom validator: This is "Mastery" level logic
     @field_validator('amount')

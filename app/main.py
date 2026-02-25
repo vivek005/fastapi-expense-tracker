@@ -1,9 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from . import schemas, crud
-from .database import init_db
-
+from . import schemas, crud, database
 
 app = FastAPI()
 
@@ -11,7 +9,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
 def startup_event():
-    init_db()
+    database.init_db()
 
 @app.get("/")
 def read_index():
@@ -28,10 +26,13 @@ def list_expenses():
 @app.get("/expenses/total")
 def get_total_spent():
     total = crud.get_total_spent_from_db()
-    return{"total_spent": total}
+    return {"total_spent": total}
 
+@app.get("/expenses/categories")
+def get_categories_report():
+    return crud.get_category_report_from_db()
 
 @app.delete("/expenses/{expense_id}")
 def delete_expense(expense_id: int):
-    crud.delete_expense_by_id(expense_id)
-    return {"message": "Deleted successfully"}
+    return crud.delete_expense_from_db(expense_id)
+
