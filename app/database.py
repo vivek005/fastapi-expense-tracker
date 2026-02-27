@@ -1,18 +1,23 @@
 import sqlite3
+import os
+from dotenv import load_dotenv
 
-DB_FILE = "expenses.db"
+# 1. Load variables from .env as soon as the file is read
+load_dotenv()
+
+# 2. Assign DB_FILE using environment variables with a fallback default
+DB_FILE = os.getenv("DATABASE_URL", "expenses.db")
 
 def get_connection():
-    # Connects to the SQLite file (creates it if missing)
+    """Establishes a connection to the SQLite database with Row support."""
     conn = sqlite3.connect(DB_FILE)
-    # This allows us to access data by name (row['amount']) instead of index (row[0])
+    # Access data by name (row['amount']) instead of index (row[0])
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
-    # Create the expenses table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
