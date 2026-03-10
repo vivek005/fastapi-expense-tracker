@@ -5,82 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-50 font-sans">
 
     <div class="max-w-4xl mx-auto py-10 px-4">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8">Expense Tracker <span class="text-blue-600">Pro</span></h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center md:text-left">Expense Tracker <span class="text-blue-600">Pro</span></h1>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <p class="text-sm text-gray-500 uppercase font-semibold">Total Spent</p>
                 <h2 id="total-amount" class="text-4xl font-bold text-gray-900 mb-6">₹0.00</h2>
-    
+                
                 <div class="pt-6 border-t border-gray-100">
                     <h3 class="text-sm font-bold mb-4 text-gray-800 uppercase">Spending by Category</h3>
-                    <div id="category-list" class="space-y-3 text-sm">
-                        </div>
+                    <div id="category-list" class="space-y-3 text-sm"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                <h3 class="text-sm font-bold mb-4 text-gray-800 uppercase">Expense Distribution</h3>
+                <div style="width: 250px; height: 250px;">
+                    <canvas id="expenseChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100 mb-10">
-            <h3 class="text-lg font-semibold mb-4">Add New Expense</h3>
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-100 mb-10">
+            <h3 class="text-lg font-semibold mb-4 text-center md:text-left">Add New Expense</h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input id="item" type="text" placeholder="Item (e.g. Pizza)" class="border p-2 rounded-lg">
-                <input id="amount" type="number" placeholder="Amount" class="border p-2 rounded-lg">
-                <input id="category" type="text" placeholder="Category" class="border p-2 rounded-lg">
-                <button onclick="addExpense()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">Add</button>
+                <input id="item" type="text" placeholder="Item (e.g. Pizza)" class="border p-3 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="amount" type="number" placeholder="Amount" class="border p-3 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="category" type="text" placeholder="Category" class="border p-3 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="addExpense()" class="bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition w-full">Add Expense</button>
             </div>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table class="w-full text-left">
-                <thead class="bg-gray-50 border-b text-sm">
-                    <tr>
-                        <th class="px-6 py-4 font-semibold text-gray-700">Date</th>
-                        <th class="px-6 py-4 font-semibold text-gray-700">Item</th>
-                        <th class="px-6 py-4 font-semibold text-gray-700">Category</th>
-                        <th class="px-6 py-4 font-semibold text-gray-700 text-right">Amount</th>
-                        <th class="px-6 py-4 font-semibold text-gray-700 text-center">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="expense-list">
-                    </tbody>
-            </table>
+            <div class="overflow-x-auto"> 
+                <table class="w-full text-left min-w-[700px]"> <thead class="bg-gray-50 border-b text-sm">
+                        <tr>
+                            <th class="px-4 py-4 font-semibold text-gray-700">Date</th>
+                            <th class="px-4 py-4 font-semibold text-gray-700">Item</th>
+                            <th class="px-4 py-4 font-semibold text-gray-700">Category</th>
+                            <th class="px-4 py-4 font-semibold text-gray-700 text-right">Amount</th>
+                            <th class="px-4 py-4 font-semibold text-gray-700 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expense-list"></tbody>
+                </table>
+            </div>
         </div>
+        <p class="text-xs text-gray-400 mt-2 text-center md:hidden">Swipe table left/right to see actions →</p>
     </div>
 
     <script>
-        // This works locally (localhost:8000) AND on Render automatically!
-        const API_URL = window.location.origin;;
+        const API_URL = window.location.origin;
+        let myChart = null;
 
         async function updateDashboard() {
             try {
-                // 1. Update Total
                 const resTotal = await fetch(`${API_URL}/expenses/total`);
                 const dataTotal = await resTotal.json();
                 const formatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
                 document.getElementById('total-amount').innerText = formatter.format(dataTotal.total_spent);
                 
-                // 2. Update Category Breakdown
                 await updateCategoryUI(); 
 
-                // 3. Update Expense Table
                 const listRes = await fetch(`${API_URL}/expenses/`);
                 const expenses = await listRes.json();
                 const listElement = document.getElementById('expense-list');
                 
                 listElement.innerHTML = expenses.map(exp => `
                     <tr class="border-b hover:bg-gray-50 transition text-sm">
-                        <td class="px-6 py-4 text-gray-400 font-mono">${exp.date}</td>
-                        <td class="px-6 py-4 font-medium text-gray-800">${exp.notes}</td>
-                        <td class="px-6 py-4 text-gray-500">${exp.category}</td>
-                        <td class="px-6 py-4 text-right font-bold text-blue-600">₹${parseFloat(exp.amount).toFixed(2)}</td>
-                        <td class="px-6 py-4 text-center">
-                            <button onclick="deleteExpense(${exp.id})" class="text-red-500 hover:text-red-700 font-bold transition">
-                                Delete
-                            </button>
+                        <td class="px-4 py-4 text-gray-500 font-mono whitespace-nowrap">${exp.date}</td>
+                        <td class="px-4 py-4 font-medium text-gray-800">${exp.notes}</td>
+                        <td class="px-4 py-4 text-gray-500 capitalize">${exp.category}</td>
+                        <td class="px-4 py-4 text-right font-bold text-blue-600">₹${parseFloat(exp.amount).toFixed(2)}</td>
+                        <td class="px-4 py-4 text-center">
+                            <button onclick="deleteExpense(${exp.id})" class="bg-red-50 text-red-600 px-3 py-1 rounded hover:bg-red-600 hover:text-white transition font-bold text-xs">Delete</button>
                         </td>
                     </tr>
                 `).join('');
@@ -91,13 +94,11 @@
 
         async function addExpense() {
             const amount = document.getElementById('amount').value;
-            const category = document.getElementById('category').value;
-            const notes = document.getElementById('item').value;
+            const item = document.getElementById('item').value;
+            const categoryInput = document.getElementById('category').value;
+            const category = categoryInput.trim().toLowerCase();
 
-            if (!amount || !category || !notes) {
-                alert("Please fill all fields");
-                return;
-            }
+            if (!amount || !category || !item) return alert("Please fill all fields");
 
             const res = await fetch(`${API_URL}/expenses/`, {
                 method: "POST",
@@ -105,7 +106,7 @@
                 body: JSON.stringify({ 
                     amount: parseFloat(amount), 
                     category, 
-                    notes, 
+                    notes: item, 
                     date: new Date().toISOString().split('T')[0] 
                 })
             });
@@ -119,38 +120,61 @@
         }
 
         async function deleteExpense(id) {
-            if (confirm("Are you sure you want to delete this expense?")) {
+            if (confirm("Delete this expense?")) {
                 const res = await fetch(`${API_URL}/expenses/${id}`, { method: "DELETE" });
-                if (res.ok) {
-                    updateDashboard();
-                }
+                if (res.ok) updateDashboard();
             }
         }
 
         async function updateCategoryUI() {
-            try {
-                const response = await fetch(`${API_URL}/expenses/categories`);
-                const categories = await response.json();
-                const listElement = document.getElementById('category-list');
-                listElement.innerHTML = ''; 
+            const response = await fetch(`${API_URL}/expenses/categories`);
+            const categories = await response.json();
+            const listElement = document.getElementById('category-list');
+            listElement.innerHTML = ''; 
 
-                if (categories.length === 0) {
-                    listElement.innerHTML = '<p class="text-gray-500">No data available yet.</p>';
-                    return;
-                }
-
-                categories.forEach(item => {
-                    const row = document.createElement('div');
-                    row.className = "flex justify-between items-center border-b pb-2";
-                    row.innerHTML = `
-                        <span class="font-medium text-gray-700">${item.category}</span>
-                        <span class="text-blue-600 font-bold">₹${parseFloat(item.total).toLocaleString('en-IN')}</span>
-                    `;
-                    listElement.appendChild(row);
-                });
-            } catch (error) {
-                console.error("Failed to fetch categories:", error);
+            if (categories.length === 0) {
+                listElement.innerHTML = '<p class="text-gray-500 text-center">No data available.</p>';
+                return;
             }
+
+            categories.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center border-b pb-2 capitalize";
+                row.innerHTML = `
+                    <span class="font-medium text-gray-700">${item.category}</span>
+                    <span class="text-blue-600 font-bold">₹${parseFloat(item.total).toLocaleString('en-IN')}</span>
+                `;
+                listElement.appendChild(row);
+            });
+
+            renderChart(categories.map(i => i.category), categories.map(i => i.total));
+        }
+
+        function renderChart(labels, data) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { boxWidth: 10, padding: 10, font: { size: 10 } } 
+                        } 
+                    }
+                }
+            });
         }
 
         window.addEventListener('DOMContentLoaded', updateDashboard);
