@@ -9,8 +9,34 @@
 </head>
 <body class="bg-gray-50 font-sans">
 
+    <div id="auth-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm mx-4">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">Welcome</h2>
+                <p class="text-gray-500 mt-2" id="auth-title">Login to your tracker</p>
+            </div>
+
+            <div class="space-y-4">
+                <input id="auth-user" type="text" placeholder="Username" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="auth-pass" type="password" placeholder="Password" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <button onclick="handleAuth()" id="auth-btn" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition">
+                    Login
+                </button>
+
+                <p class="text-center text-sm text-gray-600">
+                    <span id="auth-toggle-text">Don't have an account?</span> 
+                    <button onclick="toggleAuthMode()" class="text-blue-600 font-bold hover:underline" id="auth-toggle-btn">Sign Up</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <div class="max-w-4xl mx-auto py-10 px-4">
-        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center md:text-left">Expense Tracker <span class="text-blue-600">Pro</span></h1>
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Expense Tracker <span class="text-blue-600">Pro</span></h1>
+            <button onclick="logout()" class="text-sm font-bold text-red-500 hover:text-red-700 bg-red-50 px-4 py-2 rounded-lg">Logout</button>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -24,7 +50,7 @@
             </div>
 
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-                <h3 class="text-sm font-bold mb-4 text-gray-800 uppercase">Expense Distribution</h3>
+                <h3 class="text-sm font-bold mb-4 text-gray-800 uppercase text-center">Expense Distribution</h3>
                 <div style="width: 250px; height: 250px;">
                     <canvas id="expenseChart"></canvas>
                 </div>
@@ -43,7 +69,8 @@
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto"> 
-                <table class="w-full text-left min-w-[700px]"> <thead class="bg-gray-50 border-b text-sm">
+                <table class="w-full text-left min-w-[700px]">
+                    <thead class="bg-gray-50 border-b text-sm">
                         <tr>
                             <th class="px-4 py-4 font-semibold text-gray-700">Date</th>
                             <th class="px-4 py-4 font-semibold text-gray-700">Item</th>
@@ -62,17 +89,88 @@
     <script>
         const API_URL = window.location.origin;
         let myChart = null;
+        let isLoginMode = true;
+
+        // --- AUTH LOGIC ---
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').innerText = isLoginMode ? "Login to your tracker" : "Create a new account";
+            document.getElementById('auth-btn').innerText = isLoginMode ? "Login" : "Sign Up";
+            document.getElementById('auth-toggle-text').innerText = isLoginMode ? "Don't have an account?" : "Already have an account?";
+            document.getElementById('auth-toggle-btn').innerText = isLoginMode ? "Sign Up" : "Login";
+        }
+
+        async function handleAuth() {
+            const username = document.getElementById('auth-user').value;
+            const password = document.getElementById('auth-pass').value;
+            const endpoint = isLoginMode ? '/login' : '/signup';
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (isLoginMode) {
+                        localStorage.setItem('token', data.access_token);
+                        checkAuth();
+                    } else {
+                        alert("Account created! Please login.");
+                        toggleAuthMode();
+                    }
+                } else {
+                    alert(data.detail || "Authentication failed!");
+                }
+            } catch (err) {
+                alert("Server error. Is the backend running?");
+            }
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                document.getElementById('auth-overlay').classList.add('hidden');
+                updateDashboard();
+            } else {
+                document.getElementById('auth-overlay').classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            location.reload();
+        }
+
+        // --- UPDATED EXPENSE LOGIC (NOW WITH HEADERS) ---
 
         async function updateDashboard() {
+            const token = localStorage.getItem('token');
             try {
-                const resTotal = await fetch(`${API_URL}/expenses/total`);
+                // Total Amount
+                const resTotal = await fetch(`${API_URL}/expenses/total`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (resTotal.status === 401) return logout(); // Auto-logout if token expired
+
                 const dataTotal = await resTotal.json();
                 const formatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
-                document.getElementById('total-amount').innerText = formatter.format(dataTotal.total_spent);
+                document.getElementById('total-amount').innerText = formatter.format(dataTotal.total_spent || 0);
                 
                 await updateCategoryUI(); 
 
-                const listRes = await fetch(`${API_URL}/expenses/`);
+                // Expense List
+                const listRes = await fetch(`${API_URL}/expenses/`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const expenses = await listRes.json();
                 const listElement = document.getElementById('expense-list');
                 
@@ -88,21 +186,24 @@
                     </tr>
                 `).join('');
             } catch (error) {
-                console.error("Dashboard update failed:", error);
+                console.error("Dashboard failed:", error);
             }
         }
 
         async function addExpense() {
+            const token = localStorage.getItem('token');
             const amount = document.getElementById('amount').value;
             const item = document.getElementById('item').value;
-            const categoryInput = document.getElementById('category').value;
-            const category = categoryInput.trim().toLowerCase();
+            const category = document.getElementById('category').value.trim().toLowerCase();
 
             if (!amount || !category || !item) return alert("Please fill all fields");
 
             const res = await fetch(`${API_URL}/expenses/`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({ 
                     amount: parseFloat(amount), 
                     category, 
@@ -120,19 +221,26 @@
         }
 
         async function deleteExpense(id) {
+            const token = localStorage.getItem('token');
             if (confirm("Delete this expense?")) {
-                const res = await fetch(`${API_URL}/expenses/${id}`, { method: "DELETE" });
+                const res = await fetch(`${API_URL}/expenses/${id}`, { 
+                    method: "DELETE",
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (res.ok) updateDashboard();
             }
         }
 
         async function updateCategoryUI() {
-            const response = await fetch(`${API_URL}/expenses/categories`);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/expenses/categories`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const categories = await response.json();
             const listElement = document.getElementById('category-list');
             listElement.innerHTML = ''; 
 
-            if (categories.length === 0) {
+            if (!categories || categories.length === 0) {
                 listElement.innerHTML = '<p class="text-gray-500 text-center">No data available.</p>';
                 return;
             }
@@ -160,7 +268,7 @@
                     labels: labels,
                     datasets: [{
                         data: data,
-                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1'],
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
                         hoverOffset: 4
                     }]
                 },
@@ -168,16 +276,14 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { 
-                        legend: { 
-                            position: 'bottom', 
-                            labels: { boxWidth: 10, padding: 10, font: { size: 10 } } 
-                        } 
+                        legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 10 } } } 
                     }
                 }
             });
         }
 
-        window.addEventListener('DOMContentLoaded', updateDashboard);
+        // --- CHECK LOGIN ON LOAD ---
+        window.addEventListener('DOMContentLoaded', checkAuth);
     </script>
 </body>
 </html>
