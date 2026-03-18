@@ -14,9 +14,9 @@
             <h2 class="text-3xl font-bold text-gray-800" id="auth-title">Welcome</h2>
             <p class="text-gray-500 mt-2 mb-8">Login to save your expenses</p>
             <div class="space-y-4">
-                <input id="auth-user" type="text" placeholder="Username" class="w-full p-4 border rounded-xl">
-                <input id="auth-pass" type="password" placeholder="Password" class="w-full p-4 border rounded-xl">
-                <button onclick="handleAuth()" id="auth-btn" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">Login</button>
+                <input id="auth-user" type="text" placeholder="Username" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="auth-pass" type="password" placeholder="Password" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="handleAuth()" id="auth-btn" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition">Login</button>
                 <button onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-blue-600 text-sm font-bold hover:underline">Switch to Sign Up</button>
                 <button onclick="document.getElementById('auth-overlay').classList.add('hidden')" class="block w-full text-gray-400 text-xs mt-4">Close</button>
             </div>
@@ -42,10 +42,10 @@
 
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-10">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input id="item" type="text" placeholder="Item" class="border p-3 rounded-lg">
-                <input id="amount" type="number" placeholder="Amount" class="border p-3 rounded-lg">
-                <input id="category" type="text" placeholder="Category" class="border p-3 rounded-lg">
-                <button onclick="addExpense()" class="bg-blue-600 text-white font-bold py-3 rounded-lg">Add Expense</button>
+                <input id="item" type="text" placeholder="Item" class="border p-3 rounded-lg w-full">
+                <input id="amount" type="number" placeholder="Amount" class="border p-3 rounded-lg w-full">
+                <input id="category" type="text" placeholder="Category" class="border p-3 rounded-lg w-full">
+                <button onclick="addExpense()" class="bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition w-full">Add Expense</button>
             </div>
         </div>
 
@@ -94,11 +94,11 @@
                     document.getElementById('auth-overlay').classList.add('hidden');
                     location.reload();
                 } else {
-                    alert("Success! Now login.");
+                    alert("Account created! Now login.");
                     toggleAuthMode();
                 }
             } else {
-                alert(data.detail || "Error");
+                alert(data.detail || "Authentication failed");
             }
         }
 
@@ -106,34 +106,41 @@
             const token = localStorage.getItem('token');
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            const resTotal = await fetch(`${API_URL}/expenses/total`, { headers });
-            const dataTotal = await resTotal.json();
-            document.getElementById('total-amount').innerText = `₹${parseFloat(dataTotal.total_spent || 0).toFixed(2)}`;
+            try {
+                const resTotal = await fetch(`${API_URL}/expenses/total`, { headers });
+                const dataTotal = await resTotal.json();
+                document.getElementById('total-amount').innerText = `₹${parseFloat(dataTotal.total_spent || 0).toFixed(2)}`;
 
-            const resList = await fetch(`${API_URL}/expenses/`, { headers });
-            const expenses = await resList.json();
-            document.getElementById('expense-list').innerHTML = expenses.map(exp => `
-                <tr class="border-b">
-                    <td class="px-4 py-3">${exp.date}</td>
-                    <td class="px-4 py-3">${exp.notes}</td>
-                    <td class="px-4 py-3 capitalize">${exp.category}</td>
-                    <td class="px-4 py-3 text-right font-bold">₹${exp.amount}</td>
-                    <td class="px-4 py-3 text-center">
-                        <button onclick="deleteExpense(${exp.id})" class="text-red-500 font-bold">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
+                const resList = await fetch(`${API_URL}/expenses/`, { headers });
+                const expenses = await resList.json();
+                document.getElementById('expense-list').innerHTML = expenses.map(exp => `
+                    <tr class="border-b hover:bg-gray-50 transition">
+                        <td class="px-4 py-3 text-gray-500">${exp.date}</td>
+                        <td class="px-4 py-3 font-medium">${exp.notes}</td>
+                        <td class="px-4 py-3 capitalize">${exp.category}</td>
+                        <td class="px-4 py-3 text-right font-bold text-blue-600">₹${exp.amount}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="deleteExpense(${exp.id})" class="text-red-500 hover:text-red-700 font-bold">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
 
-            updateCategoryUI(headers);
+                updateCategoryUI(headers);
+            } catch (err) { console.error(err); }
         }
 
         async function addExpense() {
             const token = localStorage.getItem('token');
-            if (!token) return document.getElementById('auth-overlay').classList.remove('hidden');
+            if (!token) {
+                document.getElementById('auth-overlay').classList.remove('hidden');
+                return;
+            }
 
             const amount = document.getElementById('amount').value;
             const notes = document.getElementById('item').value;
             const category = document.getElementById('category').value;
+
+            if(!amount || !notes || !category) return alert("Fill all fields");
 
             const res = await fetch(`${API_URL}/expenses/`, {
                 method: "POST",
@@ -144,21 +151,34 @@
                 body: JSON.stringify({ amount, notes, category, date: new Date().toISOString().split('T')[0] })
             });
 
-            if (res.ok) updateDashboard();
+            if (res.ok) {
+                updateDashboard();
+                document.getElementById('amount').value = ''; document.getElementById('item').value = ''; document.getElementById('category').value = '';
+            }
         }
 
         async function deleteExpense(id) {
             const token = localStorage.getItem('token');
-            await fetch(`${API_URL}/expenses/${id}`, {
-                method: "DELETE",
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            updateDashboard();
+            if (!token) return document.getElementById('auth-overlay').classList.remove('hidden');
+
+            if (confirm("Delete this expense?")) {
+                await fetch(`${API_URL}/expenses/${id}`, {
+                    method: "DELETE",
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                updateDashboard();
+            }
         }
 
         async function updateCategoryUI(headers) {
             const res = await fetch(`${API_URL}/expenses/categories`, { headers });
             const categories = await res.json();
+            const list = document.getElementById('category-list');
+            list.innerHTML = categories.map(c => `
+                <div class="flex justify-between border-b pb-1 capitalize">
+                    <span>${c.category}</span><span class="font-bold">₹${c.total}</span>
+                </div>
+            `).join('');
             renderChart(categories.map(c => c.category), categories.map(c => c.total));
         }
 
@@ -167,7 +187,7 @@
             if (myChart) myChart.destroy();
             myChart = new Chart(ctx, {
                 type: 'doughnut',
-                data: { labels, datasets: [{ data, backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'] }] },
+                data: { labels, datasets: [{ data, backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'] }] },
                 options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
         }
@@ -176,10 +196,10 @@
             const token = localStorage.getItem('token');
             const controls = document.getElementById('user-controls');
             if (token) {
-                controls.innerHTML = `<button onclick="localStorage.removeItem('token'); location.reload();" class="text-red-500 font-bold">Logout</button>`;
+                controls.innerHTML = `<button onclick="localStorage.removeItem('token'); location.reload();" class="text-sm font-bold text-red-500 hover:underline">Logout</button>`;
                 updateDashboard();
             } else {
-                controls.innerHTML = `<button onclick="document.getElementById('auth-overlay').classList.remove('hidden')" class="text-blue-600 font-bold">Login</button>`;
+                controls.innerHTML = `<button onclick="document.getElementById('auth-overlay').classList.remove('hidden')" class="text-sm font-bold text-blue-600 hover:underline">Login</button>`;
             }
         });
     </script>

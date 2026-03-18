@@ -82,5 +82,10 @@ def get_categories_report(user=Depends(get_current_user)):
 
 @app.delete("/expenses/{expense_id}")
 def delete_expense(expense_id: int, user=Depends(get_current_user)):
-    if not user: raise HTTPException(status_code=401)
-    return crud.delete_expense_from_db(expense_id, owner_id=user["id"])
+    if not user:
+        raise HTTPException(status_code=401, detail="Please login first")
+    try:
+        return crud.delete_expense_from_db(expense_id, owner_id=user["id"])
+    except Exception as e:
+        logger.error(f"Failed to delete expense {expense_id}: {e}")
+        raise HTTPException(status_code=500, detail="Could not delete expense")
