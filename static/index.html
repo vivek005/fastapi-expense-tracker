@@ -9,25 +9,16 @@
 </head>
 <body class="bg-gray-50 font-sans">
 
-    <div id="auth-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm mx-4">
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold text-gray-800">Welcome</h2>
-                <p class="text-gray-500 mt-2" id="auth-title">Login to your tracker</p>
-            </div>
-
+    <div id="auth-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm mx-4 text-center">
+            <h2 class="text-3xl font-bold text-gray-800" id="auth-title">Welcome</h2>
+            <p class="text-gray-500 mt-2 mb-8">Login to save your expenses</p>
             <div class="space-y-4">
-                <input id="auth-user" type="text" placeholder="Username" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                <input id="auth-pass" type="password" placeholder="Password" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                
-                <button onclick="handleAuth()" id="auth-btn" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition">
-                    Login
-                </button>
-
-                <p class="text-center text-sm text-gray-600">
-                    <span id="auth-toggle-text">Don't have an account?</span> 
-                    <button onclick="toggleAuthMode()" class="text-blue-600 font-bold hover:underline" id="auth-toggle-btn">Sign Up</button>
-                </p>
+                <input id="auth-user" type="text" placeholder="Username" class="w-full p-4 border rounded-xl">
+                <input id="auth-pass" type="password" placeholder="Password" class="w-full p-4 border rounded-xl">
+                <button onclick="handleAuth()" id="auth-btn" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">Login</button>
+                <button onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-blue-600 text-sm font-bold hover:underline">Switch to Sign Up</button>
+                <button onclick="document.getElementById('auth-overlay').classList.add('hidden')" class="block w-full text-gray-400 text-xs mt-4">Close</button>
             </div>
         </div>
     </div>
@@ -35,55 +26,43 @@
     <div class="max-w-4xl mx-auto py-10 px-4">
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-gray-800">Expense Tracker <span class="text-blue-600">Pro</span></h1>
-            <button onclick="logout()" class="text-sm font-bold text-red-500 hover:text-red-700 bg-red-50 px-4 py-2 rounded-lg">Logout</button>
+            <div id="user-controls"></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <p class="text-sm text-gray-500 uppercase font-semibold">Total Spent</p>
                 <h2 id="total-amount" class="text-4xl font-bold text-gray-900 mb-6">₹0.00</h2>
-                
-                <div class="pt-6 border-t border-gray-100">
-                    <h3 class="text-sm font-bold mb-4 text-gray-800 uppercase">Spending by Category</h3>
-                    <div id="category-list" class="space-y-3 text-sm"></div>
-                </div>
+                <div id="category-list" class="space-y-3 text-sm"></div>
             </div>
-
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-                <h3 class="text-sm font-bold mb-4 text-gray-800 uppercase text-center">Expense Distribution</h3>
-                <div style="width: 250px; height: 250px;">
-                    <canvas id="expenseChart"></canvas>
-                </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
+                <canvas id="expenseChart" style="max-width: 250px; max-height: 250px;"></canvas>
             </div>
         </div>
 
-        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-100 mb-10">
-            <h3 class="text-lg font-semibold mb-4 text-center md:text-left">Add New Expense</h3>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-10">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input id="item" type="text" placeholder="Item (e.g. Pizza)" class="border p-3 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500">
-                <input id="amount" type="number" placeholder="Amount" class="border p-3 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500">
-                <input id="category" type="text" placeholder="Category" class="border p-3 rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500">
-                <button onclick="addExpense()" class="bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition w-full">Add Expense</button>
+                <input id="item" type="text" placeholder="Item" class="border p-3 rounded-lg">
+                <input id="amount" type="number" placeholder="Amount" class="border p-3 rounded-lg">
+                <input id="category" type="text" placeholder="Category" class="border p-3 rounded-lg">
+                <button onclick="addExpense()" class="bg-blue-600 text-white font-bold py-3 rounded-lg">Add Expense</button>
             </div>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="overflow-x-auto"> 
-                <table class="w-full text-left min-w-[700px]">
-                    <thead class="bg-gray-50 border-b text-sm">
-                        <tr>
-                            <th class="px-4 py-4 font-semibold text-gray-700">Date</th>
-                            <th class="px-4 py-4 font-semibold text-gray-700">Item</th>
-                            <th class="px-4 py-4 font-semibold text-gray-700">Category</th>
-                            <th class="px-4 py-4 font-semibold text-gray-700 text-right">Amount</th>
-                            <th class="px-4 py-4 font-semibold text-gray-700 text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="expense-list"></tbody>
-                </table>
-            </div>
+            <table class="w-full text-left">
+                <thead class="bg-gray-50 border-b">
+                    <tr>
+                        <th class="px-4 py-3">Date</th>
+                        <th class="px-4 py-3">Item</th>
+                        <th class="px-4 py-3">Category</th>
+                        <th class="px-4 py-3 text-right">Amount</th>
+                        <th class="px-4 py-3 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="expense-list"></tbody>
+            </table>
         </div>
-        <p class="text-xs text-gray-400 mt-2 text-center md:hidden">Swipe table left/right to see actions →</p>
     </div>
 
     <script>
@@ -91,112 +70,70 @@
         let myChart = null;
         let isLoginMode = true;
 
-        // --- AUTH LOGIC ---
-
         function toggleAuthMode() {
             isLoginMode = !isLoginMode;
-            document.getElementById('auth-title').innerText = isLoginMode ? "Login to your tracker" : "Create a new account";
+            document.getElementById('auth-title').innerText = isLoginMode ? "Welcome" : "Create Account";
             document.getElementById('auth-btn').innerText = isLoginMode ? "Login" : "Sign Up";
-            document.getElementById('auth-toggle-text').innerText = isLoginMode ? "Don't have an account?" : "Already have an account?";
-            document.getElementById('auth-toggle-btn').innerText = isLoginMode ? "Sign Up" : "Login";
+            document.getElementById('auth-toggle-btn').innerText = isLoginMode ? "Switch to Sign Up" : "Switch to Login";
         }
 
         async function handleAuth() {
             const username = document.getElementById('auth-user').value;
             const password = document.getElementById('auth-pass').value;
             const endpoint = isLoginMode ? '/login' : '/signup';
-
             const formData = new FormData();
             formData.append('username', username);
             formData.append('password', password);
 
-            try {
-                const response = await fetch(`${API_URL}${endpoint}`, {
-                    method: 'POST',
-                    body: formData
-                });
+            const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
+            const data = await res.json();
 
-                const data = await response.json();
-
-                if (response.ok) {
-                    if (isLoginMode) {
-                        localStorage.setItem('token', data.access_token);
-                        checkAuth();
-                    } else {
-                        alert("Account created! Please login.");
-                        toggleAuthMode();
-                    }
+            if (res.ok) {
+                if (isLoginMode) {
+                    localStorage.setItem('token', data.access_token);
+                    document.getElementById('auth-overlay').classList.add('hidden');
+                    location.reload();
                 } else {
-                    alert(data.detail || "Authentication failed!");
+                    alert("Success! Now login.");
+                    toggleAuthMode();
                 }
-            } catch (err) {
-                alert("Server error. Is the backend running?");
-            }
-        }
-
-        function checkAuth() {
-            const token = localStorage.getItem('token');
-            if (token) {
-                document.getElementById('auth-overlay').classList.add('hidden');
-                updateDashboard();
             } else {
-                document.getElementById('auth-overlay').classList.remove('hidden');
+                alert(data.detail || "Error");
             }
         }
-
-        function logout() {
-            localStorage.removeItem('token');
-            location.reload();
-        }
-
-        // --- UPDATED EXPENSE LOGIC (NOW WITH HEADERS) ---
 
         async function updateDashboard() {
             const token = localStorage.getItem('token');
-            try {
-                // Total Amount
-                const resTotal = await fetch(`${API_URL}/expenses/total`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (resTotal.status === 401) return logout(); // Auto-logout if token expired
+            const headers = { 'Authorization': `Bearer ${token}` };
 
-                const dataTotal = await resTotal.json();
-                const formatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
-                document.getElementById('total-amount').innerText = formatter.format(dataTotal.total_spent || 0);
-                
-                await updateCategoryUI(); 
+            const resTotal = await fetch(`${API_URL}/expenses/total`, { headers });
+            const dataTotal = await resTotal.json();
+            document.getElementById('total-amount').innerText = `₹${parseFloat(dataTotal.total_spent || 0).toFixed(2)}`;
 
-                // Expense List
-                const listRes = await fetch(`${API_URL}/expenses/`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const expenses = await listRes.json();
-                const listElement = document.getElementById('expense-list');
-                
-                listElement.innerHTML = expenses.map(exp => `
-                    <tr class="border-b hover:bg-gray-50 transition text-sm">
-                        <td class="px-4 py-4 text-gray-500 font-mono whitespace-nowrap">${exp.date}</td>
-                        <td class="px-4 py-4 font-medium text-gray-800">${exp.notes}</td>
-                        <td class="px-4 py-4 text-gray-500 capitalize">${exp.category}</td>
-                        <td class="px-4 py-4 text-right font-bold text-blue-600">₹${parseFloat(exp.amount).toFixed(2)}</td>
-                        <td class="px-4 py-4 text-center">
-                            <button onclick="deleteExpense(${exp.id})" class="bg-red-50 text-red-600 px-3 py-1 rounded hover:bg-red-600 hover:text-white transition font-bold text-xs">Delete</button>
-                        </td>
-                    </tr>
-                `).join('');
-            } catch (error) {
-                console.error("Dashboard failed:", error);
-            }
+            const resList = await fetch(`${API_URL}/expenses/`, { headers });
+            const expenses = await resList.json();
+            document.getElementById('expense-list').innerHTML = expenses.map(exp => `
+                <tr class="border-b">
+                    <td class="px-4 py-3">${exp.date}</td>
+                    <td class="px-4 py-3">${exp.notes}</td>
+                    <td class="px-4 py-3 capitalize">${exp.category}</td>
+                    <td class="px-4 py-3 text-right font-bold">₹${exp.amount}</td>
+                    <td class="px-4 py-3 text-center">
+                        <button onclick="deleteExpense(${exp.id})" class="text-red-500 font-bold">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            updateCategoryUI(headers);
         }
 
         async function addExpense() {
             const token = localStorage.getItem('token');
-            const amount = document.getElementById('amount').value;
-            const item = document.getElementById('item').value;
-            const category = document.getElementById('category').value.trim().toLowerCase();
+            if (!token) return document.getElementById('auth-overlay').classList.remove('hidden');
 
-            if (!amount || !category || !item) return alert("Please fill all fields");
+            const amount = document.getElementById('amount').value;
+            const notes = document.getElementById('item').value;
+            const category = document.getElementById('category').value;
 
             const res = await fetch(`${API_URL}/expenses/`, {
                 method: "POST",
@@ -204,86 +141,47 @@
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ 
-                    amount: parseFloat(amount), 
-                    category, 
-                    notes: item, 
-                    date: new Date().toISOString().split('T')[0] 
-                })
+                body: JSON.stringify({ amount, notes, category, date: new Date().toISOString().split('T')[0] })
             });
 
-            if (res.ok) {
-                updateDashboard();
-                document.getElementById('amount').value = "";
-                document.getElementById('item').value = "";
-                document.getElementById('category').value = "";
-            }
+            if (res.ok) updateDashboard();
         }
 
         async function deleteExpense(id) {
             const token = localStorage.getItem('token');
-            if (confirm("Delete this expense?")) {
-                const res = await fetch(`${API_URL}/expenses/${id}`, { 
-                    method: "DELETE",
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) updateDashboard();
-            }
-        }
-
-        async function updateCategoryUI() {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_URL}/expenses/categories`, {
+            await fetch(`${API_URL}/expenses/${id}`, {
+                method: "DELETE",
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            const categories = await response.json();
-            const listElement = document.getElementById('category-list');
-            listElement.innerHTML = ''; 
+            updateDashboard();
+        }
 
-            if (!categories || categories.length === 0) {
-                listElement.innerHTML = '<p class="text-gray-500 text-center">No data available.</p>';
-                return;
-            }
-
-            categories.forEach(item => {
-                const row = document.createElement('div');
-                row.className = "flex justify-between items-center border-b pb-2 capitalize";
-                row.innerHTML = `
-                    <span class="font-medium text-gray-700">${item.category}</span>
-                    <span class="text-blue-600 font-bold">₹${parseFloat(item.total).toLocaleString('en-IN')}</span>
-                `;
-                listElement.appendChild(row);
-            });
-
-            renderChart(categories.map(i => i.category), categories.map(i => i.total));
+        async function updateCategoryUI(headers) {
+            const res = await fetch(`${API_URL}/expenses/categories`, { headers });
+            const categories = await res.json();
+            renderChart(categories.map(c => c.category), categories.map(c => c.total));
         }
 
         function renderChart(labels, data) {
             const ctx = document.getElementById('expenseChart').getContext('2d');
             if (myChart) myChart.destroy();
-
             myChart = new Chart(ctx, {
                 type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 10 } } } 
-                    }
-                }
+                data: { labels, datasets: [{ data, backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'] }] },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
         }
 
-        // --- CHECK LOGIN ON LOAD ---
-        window.addEventListener('DOMContentLoaded', checkAuth);
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const controls = document.getElementById('user-controls');
+            if (token) {
+                controls.innerHTML = `<button onclick="localStorage.removeItem('token'); location.reload();" class="text-red-500 font-bold">Logout</button>`;
+                updateDashboard();
+            } else {
+                controls.innerHTML = `<button onclick="document.getElementById('auth-overlay').classList.remove('hidden')" class="text-blue-600 font-bold">Login</button>`;
+            }
+        });
     </script>
 </body>
 </html>
