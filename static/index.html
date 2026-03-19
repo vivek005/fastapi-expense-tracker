@@ -174,9 +174,11 @@
             const res = await fetch(`${API_URL}/expenses/categories`, { headers });
             const categories = await res.json();
             const list = document.getElementById('category-list');
+            
+            // Added 'capitalize' class here to ensure visual consistency
             list.innerHTML = categories.map(c => `
                 <div class="flex justify-between border-b pb-1 capitalize">
-                    <span>${c.category}</span><span class="font-bold">₹${c.total}</span>
+                    <span>${c.category}</span><span class="font-bold">₹${parseFloat(c.total).toFixed(2)}</span>
                 </div>
             `).join('');
             renderChart(categories.map(c => c.category), categories.map(c => c.total));
