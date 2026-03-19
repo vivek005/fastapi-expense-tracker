@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+p = database.get_p()
+
 @app.on_event("startup")
 def startup_event():
     database.init_db()
@@ -34,25 +36,31 @@ def signup(username: str = Form(...), password: str = Form(...)):
     conn = database.get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        # This one is correct (has the 'f')
+        cursor.execute(f"SELECT * FROM users WHERE username = {p}", (username,))
         if cursor.fetchone():
             return JSONResponse(status_code=400, content={"detail": "Username taken"})
-        cursor.execute("INSERT INTO users (username, hashed_password) VALUES (?, ?)", 
+        
+        # FIX: Added 'f' before the quotes so {p} becomes '?' or '%s'
+        cursor.execute(f"INSERT INTO users (username, hashed_password) VALUES ({p}, {p})", 
                        (username, hash_password(password)))
+        
         conn.commit()
         return {"message": "Success"}
     finally:
         conn.close()
-
+        
 @app.post("/login")
 def login(username: str = Form(...), password: str = Form(...)):
     conn = database.get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        # PostgreSQL uses %s
+        cursor.execute(f"SELECT * FROM users WHERE username = {p}", (username,))
         user = cursor.fetchone()
         if not user or not verify_password(password, user['hashed_password']):
             return JSONResponse(status_code=401, content={"detail": "Invalid credentials"})
+        
         token = create_access_token(data={"sub": user['username'], "id": user['id']})
         return {"access_token": token, "token_type": "bearer"}
     finally:
