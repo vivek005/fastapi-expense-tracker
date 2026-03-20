@@ -49,8 +49,8 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table class="w-full text-left">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+            <table class="w-full text-left min-w-[600px]">
                 <thead class="bg-gray-50 border-b">
                     <tr>
                         <th class="px-4 py-3">Date</th>
@@ -63,7 +63,6 @@
                 <tbody id="expense-list"></tbody>
             </table>
         </div>
-    </div>
 
     <script>
         const API_URL = window.location.origin;
